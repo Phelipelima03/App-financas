@@ -269,13 +269,13 @@
       cards: { ...DEFAULT_CARDS_LIMITS },
       income_sources: [...DEFAULT_INCOME_SOURCES],
       incomes: [],
-      transactions: [] // {date, valor, cat, card, desc}
+      transactions: [] // {date, valor, cat, card, desc, installmentId?, installmentIndex?, installmentTotal?, installmentStart?, installmentPurchaseTotal?}
     };
   }
 
   function safeText(x){ try { return String(x ?? ""); } catch { return ""; } }
   function numOr(v, fallback){
-    const n = Number(String(v).replace(/\./g,"").replace(",","."));
+    const n = Number(String(v).replace(/\./g,"").replace(",",".")); // aceita 1.234,56
     return Number.isFinite(n) ? n : fallback;
   }
   function pad2(n){ return String(n).padStart(2,"0"); }
@@ -321,6 +321,10 @@
   }
   function normDesc(s){ return safeText(s).trim().replace(/\s+/g, " "); }
 
+  function uidInstallment(){
+    return "inst_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+  }
+
   function parseInstallments(text){
     const t = String(text || "").trim();
     if (!t || !t.includes("/")) return [null, null];
@@ -338,6 +342,11 @@
     const last = Math.round((total - base * (tot - 1)) * 100) / 100;
     vals[tot - 1] = last;
     return vals;
+  }
+  function stripInstallmentSuffix(desc){
+    // remove " (x/y)" do final, se existir
+    const s = safeText(desc).trim();
+    return s.replace(/\s*\(\s*\d+\s*\/\s*\d+\s*\)\s*$/,"").trim();
   }
 
   function normalizeData(d){
@@ -371,7 +380,22 @@
         const cat = normCategory(t.cat || t.categoria || "Outros");
         const card = normDesc(t.card || t.cartao || "");
         const desc = normDesc(t.desc || t.descricao || "");
-        return { date, valor, cat, card, desc };
+
+        // novos campos (parcelas sincronizadas)
+        const installmentId = t.installmentId ? normDesc(t.installmentId) : "";
+        const installmentIndex = Number.isFinite(Number(t.installmentIndex)) ? Number(t.installmentIndex) : null;
+        const installmentTotal = Number.isFinite(Number(t.installmentTotal)) ? Number(t.installmentTotal) : null;
+        const installmentStart = Number.isFinite(Number(t.installmentStart)) ? Number(t.installmentStart) : null;
+        const installmentPurchaseTotal = Number.isFinite(Number(t.installmentPurchaseTotal)) ? Number(t.installmentPurchaseTotal) : null;
+
+        const out = { date, valor, cat, card, desc };
+        if (installmentId) out.installmentId = installmentId;
+        if (installmentIndex != null) out.installmentIndex = installmentIndex;
+        if (installmentTotal != null) out.installmentTotal = installmentTotal;
+        if (installmentStart != null) out.installmentStart = installmentStart;
+        if (installmentPurchaseTotal != null) out.installmentPurchaseTotal = installmentPurchaseTotal;
+
+        return out;
       })
       .filter(Boolean);
 
@@ -441,6 +465,77 @@
     });
     txs.reverse();
     return txs;
+  }
+
+  // ====== Parcelas sincronizadas ======
+  function isSyncedInstallment(t){
+    return !!(t && t.installmentId && Number(t.installmentTotal) > 1);
+  }
+  function getGroupByInstallmentId(id){
+    return (data.transactions || []).filter(t => t.installmentId === id);
+  }
+  function groupMetaFromTx(tx){
+    const group = getGroupByInstallmentId(tx.installmentId);
+    // start = menor installmentIndex existente (pode ser >1 se você lançou a partir de 2/10, por exemplo)
+    const start = group.reduce((m, t) => {
+      const idx = Number.isFinite(Number(t.installmentIndex)) ? Number(t.installmentIndex) : Infinity;
+      return Math.min(m, idx);
+    }, Infinity);
+    const tot = Number(tx.installmentTotal) || null;
+
+    const baseTx = group
+      .slice()
+      .sort((a,b) => {
+        const da = parse_ddmmyyyy(a.date)?.getTime() ?? 0;
+        const db = parse_ddmmyyyy(b.date)?.getTime() ?? 0;
+        return da - db;
+      })[0] || tx;
+
+    const baseDate = parse_ddmmyyyy(baseTx.date) || today();
+    const purchaseTotal = Number.isFinite(Number(tx.installmentPurchaseTotal))
+      ? Number(tx.installmentPurchaseTotal)
+      : group.reduce((acc,t)=>acc+Number(t.valor||0),0); // fallback
+
+    return {
+      group,
+      start: Number.isFinite(start) ? start : 1,
+      tot: tot ?? group.length,
+      baseDate,
+      purchaseTotal,
+      baseDesc: stripInstallmentSuffix(baseTx.desc || tx.desc || ""),
+      cat: baseTx.cat,
+      card: baseTx.card
+    };
+  }
+  function rebuildInstallmentGroup(installmentId, baseDate, purchaseTotal, cat, card, baseDesc, startIdx, totalParc){
+    const tot = Number(totalParc);
+    const start = Number(startIdx);
+    if (!Number.isInteger(tot) || tot <= 1) throw new Error("tot inválido");
+    if (!Number.isInteger(start) || start < 1 || start > tot) throw new Error("start inválido");
+    if (!Number.isFinite(Number(purchaseTotal))) throw new Error("valor inválido");
+
+    // remove grupo antigo
+    data.transactions = (data.transactions || []).filter(t => t.installmentId !== installmentId);
+
+    const vals = splitInstallmentValues(Number(purchaseTotal), tot);
+    const remaining = tot - start + 1;
+
+    for (let i=0; i<remaining; i++){
+      const parcelaNum = start + i;
+      const dd = addMonths(baseDate, i);
+      data.transactions.push({
+        date: fmt_ddmmyyyy(dd),
+        valor: Number(vals[parcelaNum - 1]),
+        cat,
+        card,
+        desc: `${baseDesc} (${parcelaNum}/${tot})`,
+        installmentId,
+        installmentIndex: parcelaNum,
+        installmentTotal: tot,
+        installmentStart: start,
+        installmentPurchaseTotal: Number(purchaseTotal)
+      });
+    }
   }
 
   // ====== UI helpers ======
@@ -634,6 +729,7 @@
       if (tot == null){
         data.transactions.push({ date: fmt_ddmmyyyy(d), valor: Number(total), cat, card, desc });
       }else{
+        const instId = uidInstallment();
         const vals = splitInstallmentValues(Number(total), tot);
         const startIndex = idx;
         const remaining = tot - startIndex + 1;
@@ -645,7 +741,12 @@
             date: fmt_ddmmyyyy(dd),
             valor: Number(vals[parcelaNum - 1]),
             cat, card,
-            desc: `${desc} (${parcelaNum}/${tot})`
+            desc: `${desc} (${parcelaNum}/${tot})`,
+            installmentId: instId,
+            installmentIndex: parcelaNum,
+            installmentTotal: tot,
+            installmentStart: startIndex,
+            installmentPurchaseTotal: Number(total)
           });
         }
       }
@@ -658,6 +759,199 @@
     });
 
     openModal("Novo gasto", wrap, [bCancel, bSave]);
+  }
+
+  function popupEditTransaction(tx, goBackRoute=null, goBackPayload=null){
+    // Fixas continuam com o editor de fixas
+    if (tx.cat === "Despesas Fixas") { popupEditFixed(tx); return; }
+
+    const wrap = el("div");
+    const form = el("div", { class:"form" });
+
+    const isSynced = isSyncedInstallment(tx);
+
+    // Prefill
+    let preDate = safeText(tx.date);
+    let preDesc = safeText(tx.desc);
+    let preCat  = normCategory(tx.cat);
+    let preCard = normDesc(tx.card);
+
+    let preParc = "";
+    let preTotal = numOr(tx.valor, 0);
+
+    if (isSynced){
+      const meta = groupMetaFromTx(tx);
+      preDate = fmt_ddmmyyyy(meta.baseDate);
+      preDesc = meta.baseDesc;
+      preCat = meta.cat;
+      preCard = meta.card;
+      preParc = `${meta.start}/${meta.tot}`;
+      preTotal = Number(meta.purchaseTotal);
+    }else{
+      preDesc = stripInstallmentSuffix(preDesc);
+    }
+
+    const iDate = el("input", { value: preDate, placeholder:"dd/MM/aaaa" });
+    const iDesc = el("input", { value: preDesc, placeholder:"Descrição" });
+    const iVal  = el("input", { value: String(preTotal).replace(".", ","), placeholder:"Valor total (ex: 1000,00)" });
+
+    const iParc = el("input", { value: preParc, placeholder: isSynced ? "Parcelas (ex: 1/10)" : "Parcelas opcional (ex: 1/10)" });
+
+    const cats = ["Outros","Alimentação","Despesas Fixas"];
+    const sCat = select(cats, cats.includes(preCat) ? preCat : cats[0]);
+
+    const cardNames = Object.keys(data.cards || {});
+    if (!cardNames.length){ data.cards = { "Mercado Pago": 0 }; cardNames.push("Mercado Pago"); }
+    const sCard = select(cardNames, cardNames.includes(preCard) ? preCard : cardNames[0]);
+
+    const hint = el("div", { class:"muted", style:"font-size:12px; font-weight:800; margin-top:6px;" }, [
+      isSynced
+        ? "Este gasto é parcelado. Ao salvar, todas as parcelas (inclusive nos próximos meses) serão atualizadas."
+        : "Dica: se você preencher parcelas (ex: 1/10), ele vira parcelado e ficará sincronizado."
+    ]);
+
+    function syncCat(){
+      if (sCat.value === "Despesas Fixas"){
+        // aqui, se virar fixa, cartão some
+        sCard.style.display = "none";
+      }else{
+        sCard.style.display = "";
+      }
+    }
+    sCat.addEventListener("change", syncCat);
+    syncCat();
+
+    form.appendChild(el("label", {}, ["Data", iDate]));
+    form.appendChild(el("label", {}, ["Descrição", iDesc]));
+    form.appendChild(el("label", {}, ["Valor total", iVal]));
+    form.appendChild(el("label", {}, ["Parcelas (opcional)", iParc]));
+    form.appendChild(el("label", {}, ["Categoria", sCat]));
+    form.appendChild(el("label", {}, ["Cartão", sCard]));
+    wrap.appendChild(form);
+    wrap.appendChild(el("div", { style:"margin-top:10px;" }, [hint]));
+
+    const bCancel = btnSmall("Cancelar", "btnGhost", () => closeModal());
+
+    const bDelete = btnSmall("Excluir", "btnRed", () => {
+      if (isSynced){
+        if (!confirm("Excluir TODAS as parcelas deste gasto (inclui meses seguintes)?")) return;
+        data.transactions = (data.transactions || []).filter(t => t.installmentId !== tx.installmentId);
+        save();
+        closeModal();
+        toast("Parcelas excluídas.");
+        if (goBackRoute) go(goBackRoute, goBackPayload);
+        else render();
+      }else{
+        if (!confirm("Excluir este gasto?")) return;
+        const idx = data.transactions.indexOf(tx);
+        if (idx >= 0) data.transactions.splice(idx, 1);
+        save();
+        closeModal();
+        toast("Gasto excluído.");
+        if (goBackRoute) go(goBackRoute, goBackPayload);
+        else render();
+      }
+    });
+
+    const bSave = btnSmall("Salvar", "btnGreen", () => {
+      const d = parse_ddmmyyyy(iDate.value);
+      if (!d){ toast("Data inválida. Use dd/MM/aaaa."); return; }
+
+      const total = numOr(iVal.value, NaN);
+      const desc = normDesc(iDesc.value || "");
+      const cat = normCategory(sCat.value);
+      const card = (cat === "Despesas Fixas") ? NO_CARD : normDesc(sCard.value);
+
+      if (!Number.isFinite(total) || !desc){ toast("Preencha valor e descrição."); return; }
+
+      const [idx, tot] = parseInstallments(iParc.value);
+
+      // Caso 1: já era parcelado sincronizado => sempre atualiza o grupo inteiro
+      if (isSynced){
+        const meta = groupMetaFromTx(tx);
+        const newStart = (tot != null) ? idx : meta.start;
+        const newTot   = (tot != null) ? tot : meta.tot;
+
+        try{
+          rebuildInstallmentGroup(
+            tx.installmentId,
+            d,
+            Number(total),
+            cat,
+            card,
+            desc,
+            newStart,
+            newTot
+          );
+        }catch{
+          toast("Parcelas inválidas. Use ex: 1/10.");
+          return;
+        }
+
+        save();
+        closeModal();
+        toast("Parcelas atualizadas.");
+        if (goBackRoute) go(goBackRoute, goBackPayload);
+        else render();
+        return;
+      }
+
+      // Caso 2: não era parcelado, mas usuário preencheu parcelas => cria parcelado sincronizado
+      if (tot != null){
+        // remove este item e cria o grupo novo a partir dele
+        const oldIdx = data.transactions.indexOf(tx);
+        if (oldIdx >= 0) data.transactions.splice(oldIdx, 1);
+
+        const instId = uidInstallment();
+        const vals = splitInstallmentValues(Number(total), tot);
+        const startIndex = idx;
+        const remaining = tot - startIndex + 1;
+
+        for (let i=0; i<remaining; i++){
+          const parcelaNum = startIndex + i;
+          const dd = addMonths(d, i);
+          data.transactions.push({
+            date: fmt_ddmmyyyy(dd),
+            valor: Number(vals[parcelaNum - 1]),
+            cat, card,
+            desc: `${desc} (${parcelaNum}/${tot})`,
+            installmentId: instId,
+            installmentIndex: parcelaNum,
+            installmentTotal: tot,
+            installmentStart: startIndex,
+            installmentPurchaseTotal: Number(total)
+          });
+        }
+        save();
+        closeModal();
+        toast("Gasto convertido em parcelado e salvo.");
+        if (goBackRoute) go(goBackRoute, goBackPayload);
+        else render();
+        return;
+      }
+
+      // Caso 3: gasto simples => edita só ele
+      tx.date = fmt_ddmmyyyy(d);
+      tx.desc = desc;
+      tx.valor = Number(total);
+      tx.cat = cat;
+      tx.card = card;
+
+      // limpa qualquer lixo antigo
+      delete tx.installmentId;
+      delete tx.installmentIndex;
+      delete tx.installmentTotal;
+      delete tx.installmentStart;
+      delete tx.installmentPurchaseTotal;
+
+      save();
+      closeModal();
+      toast("Gasto atualizado.");
+      if (goBackRoute) go(goBackRoute, goBackPayload);
+      else render();
+    });
+
+    openModal("Editar gasto", wrap, [bCancel, bDelete, bSave]);
   }
 
   function popupAddIncome(goBack="dashboard"){
@@ -764,6 +1058,13 @@
       tx.valor = Number(v);
       tx.cat = "Despesas Fixas";
       tx.card = NO_CARD;
+
+      // limpar qualquer vínculo de parcelas (se alguém importou algo estranho)
+      delete tx.installmentId;
+      delete tx.installmentIndex;
+      delete tx.installmentTotal;
+      delete tx.installmentStart;
+      delete tx.installmentPurchaseTotal;
 
       save();
       closeModal();
@@ -973,15 +1274,27 @@
 
     txs.forEach((t) => {
       const cardShow = (t.cat === "Despesas Fixas" || t.card === NO_CARD || !t.card) ? "—" : t.card;
+      const isSynced = isSyncedInstallment(t);
 
       const item = el("div", { class:"item" });
       item.appendChild(el("div", { class:"itemTop" }, [
         el("div", {}, [
-          el("p", { class:"itemTitle mono" }, [`${t.date} • ${t.cat} • ${cardShow} • ${brl(t.valor)}`]),
+          el("p", { class:"itemTitle mono" }, [
+            `${t.date} • ${t.cat} • ${cardShow} • ${brl(t.valor)}` + (isSynced ? " • Parcela" : "")
+          ]),
           el("div", { class:"itemMeta" }, [safeText(t.desc || "")])
         ]),
         el("div", { class:"row" }, [
+          btnSmall("Editar", "btnGhost", () => popupEditTransaction(t, "gastos")),
           btnSmall("Excluir", "btnRed", () => {
+            if (isSynced){
+              if (!confirm("Excluir TODAS as parcelas deste gasto (inclui meses seguintes)?")) return;
+              data.transactions = (data.transactions || []).filter(x => x.installmentId !== t.installmentId);
+              save();
+              toast("Parcelas excluídas.");
+              render();
+              return;
+            }
             if (!confirm("Excluir este gasto?")) return;
             const idx = data.transactions.indexOf(t);
             if (idx >= 0) data.transactions.splice(idx, 1);
@@ -1210,20 +1523,31 @@
     const list = el("div", { class:"list" });
 
     txs.forEach((t) => {
+      const isSynced = isSyncedInstallment(t);
+
       const item = el("div", { class:"item" });
       item.appendChild(el("div", { class:"itemTop" }, [
         el("div", {}, [
-          el("p", { class:"itemTitle mono" }, [`${t.date} • ${t.cat} • ${brl(t.valor)}`]),
+          el("p", { class:"itemTitle mono" }, [`${t.date} • ${t.cat} • ${brl(t.valor)}` + (isSynced ? " • Parcela" : "")]),
           el("div", { class:"itemMeta" }, [safeText(t.desc || "")])
         ]),
         el("div", { class:"row" }, [
+          btnSmall("Editar", "btnGhost", () => popupEditTransaction(t, "card_detail", cardName)),
           btnSmall("Excluir", "btnRed", () => {
+            if (isSynced){
+              if (!confirm("Excluir TODAS as parcelas deste gasto (inclui meses seguintes)?")) return;
+              data.transactions = (data.transactions || []).filter(x => x.installmentId !== t.installmentId);
+              save();
+              toast("Parcelas excluídas.");
+              go("card_detail", cardName);
+              return;
+            }
             if (!confirm("Excluir este gasto?")) return;
             const idx = data.transactions.indexOf(t);
             if (idx >= 0) data.transactions.splice(idx, 1);
             save();
             toast("Gasto excluído.");
-            render();
+            go("card_detail", cardName);
           })
         ])
       ]));
