@@ -1,1244 +1,214 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>MetaCartão – MVP (HTML)</title>
-  <style>
-    :root{
-      --bg:#0b0d12;
-      --panel:#121622;
-      --text:#e8eefc;
-      --muted:#aab4d6;
-      --line:rgba(255,255,255,.08);
-      --shadow: 0 10px 30px rgba(0,0,0,.35);
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MetaCartão</title>
 
-      --blue:#5bc0ff;
-      --red:#ff5b5b;
-      --green:#35d07f;
-      --orange:#ffb347;
-      --purple:#b58bff;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      background:
-        radial-gradient(1200px 600px at 20% -10%, rgba(91,192,255,.25), transparent 55%),
-        radial-gradient(900px 500px at 85% 0%, rgba(181,139,255,.22), transparent 60%),
-        linear-gradient(180deg, #070910, #0b0d12 40%, #080a10);
-      color:var(--text);
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Helvetica Neue", "Noto Sans";
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-    .app{ max-width: 1100px; margin: 0 auto; padding: 18px 14px 32px; }
-    .topbar{ display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom: 14px; }
-    .brand{ display:flex; gap:10px; align-items:center; }
-    .logo{
-      width:38px;height:38px;border-radius:12px;
-      background: linear-gradient(135deg, rgba(91,192,255,.95), rgba(181,139,255,.9));
-      box-shadow: var(--shadow);
-    }
-    .brand h1{ margin:0; font-size: 16px; line-height:1.1; letter-spacing:.2px; }
-    .brand .sub{ margin:2px 0 0; color:var(--muted); font-size: 12px; }
-    .monthNav{
-      display:flex; gap:10px; align-items:center;
-      background: rgba(255,255,255,.04);
-      border:1px solid var(--line);
-      padding:8px 10px;
-      border-radius: 14px;
-      box-shadow: var(--shadow);
-      flex-wrap: wrap;
-      justify-content:flex-end;
-    }
-    .monthNav .m{ font-weight:700; letter-spacing:.4px; }
+<style>
+:root{
+--bg:#0b0d12;--panel:#121622;--panel2:#1a2032;
+--text:#e8eefc;--muted:#aab4d6;
+--line:rgba(255,255,255,.08);
+--blue:#5bc0ff;--green:#35d07f;--orange:#ffb347;--red:#ff5b5b;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui}
+.app{max-width:1100px;margin:auto;padding:16px}
+.btn{padding:10px 14px;border-radius:12px;border:0;font-weight:800;cursor:pointer}
+.btnGhost{background:var(--panel2);color:var(--text)}
+.btnGreen{background:var(--green);color:#06120a}
+.btnOrange{background:var(--orange);color:#1a0f00}
+.btnRed{background:var(--red);color:#1a0404}
+.panel{background:var(--panel);border-radius:16px;padding:14px;margin-bottom:14px}
+.panel h3{margin:0 0 10px}
+.list{display:flex;flex-direction:column;gap:10px}
+.item{background:var(--panel2);padding:12px;border-radius:12px}
+.muted{color:var(--muted);font-size:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+select,input{padding:10px;border-radius:10px;border:1px solid var(--line);background:#000;color:var(--text);width:100%}
 
-    .tabs{ display:grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap:10px; margin-bottom: 14px; }
-    .tabBtn{
-      border:0; border-radius: 16px; padding: 14px 12px;
-      font-weight: 800; font-size: 15px; cursor:pointer;
-      box-shadow: var(--shadow);
-      color:#0b0d12;
-      display:flex; align-items:center; justify-content:center; gap:8px;
-      transition: transform .08s ease, filter .08s ease;
-      user-select:none;
-    }
-    .tabBtn:active{ transform: scale(.99); filter: brightness(.98); }
-    .tDash{ background: linear-gradient(135deg, rgba(91,192,255,1), rgba(91,192,255,.7)); }
-    .tGastos{ background: linear-gradient(135deg, rgba(255,91,91,1), rgba(255,91,91,.7)); }
-    .tFixas{ background: linear-gradient(135deg, rgba(53,208,127,1), rgba(53,208,127,.7)); }
-    .tRec{ background: linear-gradient(135deg, rgba(255,179,71,1), rgba(255,179,71,.75)); }
-    .tCards{ background: linear-gradient(135deg, rgba(181,139,255,1), rgba(181,139,255,.75)); }
-
-    @media (max-width: 920px){
-      .tabs{ grid-template-columns: repeat(2, minmax(0,1fr)); }
-      .topbar{ flex-direction:column; align-items:stretch; gap:12px; }
-      .monthNav{ justify-content:center; }
-    }
-
-    .panel{
-      background: rgba(18,22,34,.86);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      box-shadow: var(--shadow);
-      overflow:hidden;
-    }
-    .panelHeader{
-      padding: 14px 14px 12px;
-      border-bottom: 1px solid var(--line);
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-      flex-wrap:wrap;
-    }
-    .panelTitle{ font-size: 15px; font-weight: 900; letter-spacing:.2px; margin:0; }
-    .panelSub{ margin:2px 0 0; color: var(--muted); font-size: 12px; }
-    .panelBody{ padding: 14px; }
-
-    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-    .btn{
-      border:0; border-radius: 14px; padding: 12px 14px;
-      font-weight: 900; cursor:pointer; box-shadow: var(--shadow);
-      user-select:none; display:inline-flex; align-items:center; gap:8px;
-      justify-content:center; white-space:nowrap;
-    }
-    .btnSmall{ padding: 10px 12px; border-radius: 12px; font-weight: 800; }
-    .btnGhost{ background: rgba(255,255,255,.06); color: var(--text); border: 1px solid var(--line); box-shadow:none; }
-    .btnGreen{ background: linear-gradient(135deg, rgba(53,208,127,1), rgba(53,208,127,.78)); color:#08110a; }
-    .btnOrange{ background: linear-gradient(135deg, rgba(255,179,71,1), rgba(255,179,71,.78)); color:#140b00; }
-    .btnRed{ background: linear-gradient(135deg, rgba(255,91,91,1), rgba(255,91,91,.78)); color:#140404; }
-    .btnDark{ background: rgba(10,12,18,.9); color: var(--text); border: 1px solid var(--line); box-shadow: none; }
-
-    .kpi{ display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; }
-    @media (max-width: 700px){ .kpi{ grid-template-columns: 1fr; } }
-    .kpiCard{
-      background: rgba(255,255,255,.04);
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 12px 12px 10px;
-    }
-    .kpiCard .label{ color: var(--muted); font-size: 12px; }
-    .kpiCard .value{ font-size: 20px; font-weight: 950; margin-top:4px; letter-spacing:.2px; }
-
-    .list{ display:flex; flex-direction:column; gap:10px; }
-    .item{
-      background: rgba(255,255,255,.04);
-      border:1px solid var(--line);
-      border-radius: 16px;
-      padding: 12px;
-    }
-    .itemTop{ display:flex; gap:10px; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; }
-    .itemTitle{ font-weight: 950; font-size: 14px; margin:0; }
-    .itemMeta{ margin:4px 0 0; color: var(--muted); font-size: 12px; line-height:1.35; }
-    .muted{ color: var(--muted); }
-    .divider{ height:1px; background: var(--line); margin: 12px 0; }
-    .mono{ font-variant-numeric: tabular-nums; }
-
-    /* Modal */
-    .modalOverlay{
-      position:fixed; inset:0;
-      background: rgba(0,0,0,.55);
-      display:none;
-      align-items:center; justify-content:center;
-      padding: 18px;
-      z-index: 1000;
-    }
-    .modal{
-      width: min(640px, 100%);
-      background: rgba(18,22,34,.95);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      box-shadow: 0 30px 80px rgba(0,0,0,.5);
-      overflow:hidden;
-    }
-    .modalHeader{
-      padding: 14px 14px 12px;
-      border-bottom: 1px solid var(--line);
-      display:flex; align-items:center; justify-content:space-between; gap:12px;
-    }
-    .modalHeader h3{ margin:0; font-size: 15px; font-weight: 950; }
-    .modalBody{ padding: 14px; }
-    .form{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
-    @media (max-width: 520px){ .form{ grid-template-columns: 1fr; } }
-    label{ display:flex; flex-direction:column; gap:6px; font-size: 12px; color: var(--muted); font-weight: 800; }
-    input, select, textarea{
-      width:100%;
-      padding: 12px 12px;
-      border-radius: 14px;
-      border: 1px solid var(--line);
-      background: rgba(0,0,0,.25);
-      color: var(--text);
-      outline:none;
-      font-size: 14px;
-    }
-    textarea{ min-height: 44px; resize: vertical; }
-    .modalFooter{
-      display:flex; gap:10px;
-      justify-content:flex-end; align-items:center;
-      padding: 12px 14px 14px;
-      border-top: 1px solid var(--line);
-      flex-wrap:wrap;
-    }
-    .toast{
-      position: fixed;
-      left: 50%;
-      bottom: 18px;
-      transform: translateX(-50%);
-      background: rgba(10,12,18,.95);
-      color: var(--text);
-      border: 1px solid var(--line);
-      padding: 10px 12px;
-      border-radius: 14px;
-      box-shadow: var(--shadow);
-      display:none;
-      z-index: 1100;
-      font-weight: 800;
-      font-size: 13px;
-    }
-  </style>
+.modalOverlay{
+position:fixed;inset:0;
+background:rgba(0,0,0,.6);
+display:none;align-items:center;justify-content:center;
+}
+.modal{
+background:var(--panel);
+padding:16px;border-radius:14px;
+width:100%;max-width:420px;
+}
+</style>
 </head>
 
 <body>
-  <div class="app">
-    <div class="topbar">
-      <div class="brand">
-        <div class="logo"></div>
-        <div>
-          <h1>MetaCartão</h1>
-          <div class="sub">MVP (HTML) • dados salvos no navegador</div>
-        </div>
-      </div>
+<div class="app">
 
-      <div class="monthNav">
-        <button class="btn btnSmall btnGhost" id="btnPrev">◀</button>
-        <div class="m mono" id="monthLabel">00/0000</div>
-        <button class="btn btnSmall btnGhost" id="btnNext">▶</button>
-        <button class="btn btnSmall btnGhost" id="btnToday">Hoje</button>
-        <button class="btn btnSmall btnGhost" id="btnExport">Exportar</button>
-        <label class="btn btnSmall btnGhost" style="cursor:pointer;">
-          Importar
-          <input id="fileImport" type="file" accept="application/json" style="display:none;">
-        </label>
-        <button class="btn btnSmall btnGhost" id="btnReset">Reset</button>
-      </div>
-    </div>
-
-    <div class="tabs">
-      <button class="tabBtn tDash" id="tabDashboard">📊 Dashboard</button>
-      <button class="tabBtn tGastos" id="tabGastos">🧾 Gastos</button>
-      <button class="tabBtn tFixas" id="tabFixas">🧩 Fixas</button>
-      <button class="tabBtn tRec" id="tabReceitas">💰 Receitas</button>
-      <button class="tabBtn tCards" id="tabCartoes">💳 Cartões</button>
-    </div>
-
-    <div id="view"></div>
+  <div class="row" style="margin-bottom:14px">
+    <button class="btn btnGhost" onclick="setView('dashboard')">Dashboard</button>
+    <button class="btn btnGhost" onclick="setView('cartoes')">Cartões</button>
+    <button class="btn btnGhost" onclick="setView('fixas')">Fixas</button>
+    <button class="btn btnGhost" onclick="setView('gastos')">Gastos</button>
+    <button class="btn btnGhost" onclick="setView('receitas')">Receitas</button>
+    <button class="btn btnGhost" onclick="fileInput.click()">Importar</button>
   </div>
 
-  <!-- Modals -->
-  <div class="modalOverlay" id="modalOverlay">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <div class="modalHeader">
-        <h3 id="modalTitle">Modal</h3>
-        <button class="btn btnSmall btnGhost" id="modalClose">✕</button>
-      </div>
-      <div class="modalBody" id="modalBody"></div>
-      <div class="modalFooter" id="modalFooter"></div>
+  <input type="file" id="fileInput" accept=".json,.csv" hidden>
+
+  <div id="view"></div>
+</div>
+
+<!-- MODAL CSV -->
+<div class="modalOverlay" id="csvModal">
+  <div class="modal">
+    <h3>Selecionar cartão da fatura</h3>
+    <select id="csvCard"></select>
+    <div class="row" style="margin-top:12px">
+      <button class="btn btnGhost" onclick="closeCSV()">Cancelar</button>
+      <button class="btn btnGreen" onclick="confirmCSV()">Importar</button>
     </div>
   </div>
-
-  <div class="toast" id="toast"></div>
+</div>
 
 <script>
-(() => {
-  const STORAGE_KEY = "metacartao_data_v2_simple";
-  const NO_CARD = "Sem cartão";
-
-  const DEFAULT_CARDS_LIMITS = {
-    "Mercado Pago": 400,
-    "Caixa": 400,
-    "Magalu": 400,
-    "BrB": 400,
-    "Nubank": 0,
-    "Inter": 0
-  };
-
-  const DEFAULT_INCOME_SOURCES = [
-    "Salário 1","Salário 2","Hora besta","Vale terno","Rafa","Setis","Velinha","Velinho","Tia Mali","Renda extra"
-  ];
-
-  function seed(){
-    return {
-      cards: { ...DEFAULT_CARDS_LIMITS },
-      income_sources: [...DEFAULT_INCOME_SOURCES],
-      incomes: [],
-      transactions: [] // {date, valor, cat, card, desc}
-    };
-  }
-
-  function safeText(x){ try { return String(x ?? ""); } catch { return ""; } }
-  function numOr(v, fallback){
-    const n = Number(String(v).replace(/\./g,"").replace(",","."));
-    return Number.isFinite(n) ? n : fallback;
-  }
-  function pad2(n){ return String(n).padStart(2,"0"); }
-  function brl(v){
-    const vv = Number(v || 0);
-    return vv.toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
-  }
-  function today(){
-    const d = new Date();
-    d.setHours(0,0,0,0);
-    return d;
-  }
-  function fmt_ddmmyyyy(d){
-    return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}`;
-  }
-  function parse_ddmmyyyy(s){
-    const t = String(s || "").trim();
-    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t);
-    if (!m) return null;
-    const dd = Number(m[1]), mm = Number(m[2]), yy = Number(m[3]);
-    const d = new Date(yy, mm-1, dd);
-    if (d.getFullYear() !== yy || (d.getMonth()+1) !== mm || d.getDate() !== dd) return null;
-    d.setHours(0,0,0,0);
-    return d;
-  }
-  function monthYearStr(m, y){ return `${pad2(m)}/${y}`; }
-  function addMonths(d, n){
-    const nd = new Date(d);
-    const day = nd.getDate();
-    nd.setDate(1);
-    nd.setMonth(nd.getMonth() + n);
-    const last = new Date(nd.getFullYear(), nd.getMonth()+1, 0).getDate();
-    nd.setDate(Math.min(day, last));
-    nd.setHours(0,0,0,0);
-    return nd;
-  }
-  function sameMonth(d, m, y){ return d.getMonth()+1 === m && d.getFullYear() === y; }
-  function normCategory(cat){
-    const c = safeText(cat).trim();
-    const low = c.toLowerCase();
-    if (low === "despesas fixas" || low === "despesa fixa" || low === "fixas") return "Despesas Fixas";
-    return c || "Outros";
-  }
-  function normDesc(s){ return safeText(s).trim().replace(/\s+/g, " "); }
-
-  function parseInstallments(text){
-    const t = String(text || "").trim();
-    if (!t || !t.includes("/")) return [null, null];
-    const parts = t.split("/");
-    if (parts.length !== 2) return [null, null];
-    const idx = Number(parts[0].trim());
-    const tot = Number(parts[1].trim());
-    if (!Number.isInteger(idx) || !Number.isInteger(tot)) return [null, null];
-    if (tot <= 0 || idx <= 0 || idx > tot) return [null, null];
-    return [idx, tot];
-  }
-  function splitInstallmentValues(total, tot){
-    const base = Math.round((total / tot) * 100) / 100;
-    const vals = Array(tot).fill(base);
-    const last = Math.round((total - base * (tot - 1)) * 100) / 100;
-    vals[tot - 1] = last;
-    return vals;
-  }
-
-  function normalizeData(d){
-    if (!d || typeof d !== "object") d = {};
-    if (!d.cards || typeof d.cards !== "object" || Array.isArray(d.cards)) d.cards = {};
-    for (const [k,v] of Object.entries(DEFAULT_CARDS_LIMITS)){
-      if (!(k in d.cards)) d.cards[k] = v;
-      d.cards[k] = numOr(d.cards[k], v);
-    }
-
-    if (!Array.isArray(d.income_sources) || !d.income_sources.length) d.income_sources = [...DEFAULT_INCOME_SOURCES];
-
-    if (!Array.isArray(d.incomes)) d.incomes = [];
-    d.incomes = d.incomes
-      .map(it => {
-        if (!it || typeof it !== "object") return null;
-        const date = safeText(it.date || it.data || fmt_ddmmyyyy(today())).trim();
-        const valor = numOr(it.valor ?? it.amount, 0);
-        const source = normDesc(it.source || it.origem || it.nome || "Receita");
-        const desc = normDesc(it.desc || it.descricao || "");
-        return { date, valor, source, desc };
-      })
-      .filter(Boolean);
-
-    if (!Array.isArray(d.transactions)) d.transactions = [];
-    d.transactions = d.transactions
-      .map(t => {
-        if (!t || typeof t !== "object") return null;
-        const date = safeText(t.date || t.data || fmt_ddmmyyyy(today())).trim();
-        const valor = numOr(t.valor, 0);
-        const cat = normCategory(t.cat || t.categoria || "Outros");
-        const card = normDesc(t.card || t.cartao || "");
-        const desc = normDesc(t.desc || t.descricao || "");
-        return { date, valor, cat, card, desc };
-      })
-      .filter(Boolean);
-
-    return d;
-  }
-
-  function load(){
-    try{
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return normalizeData(seed());
-      return normalizeData(JSON.parse(raw));
-    }catch{
-      return normalizeData(seed());
-    }
-  }
-  function save(){
-    data = normalizeData(data);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }
-
-  // ====== Totais (mês selecionado) ======
-  function monthTotalExpenses(m, y){
-    return data.transactions.reduce((acc, t) => {
-      const d = parse_ddmmyyyy(t.date);
-      if (!d) return acc;
-      if (sameMonth(d, m, y)) acc += Number(t.valor || 0);
-      return acc;
-    }, 0);
-  }
-  function monthTotalIncomes(m, y){
-    return data.incomes.reduce((acc, it) => {
-      const d = parse_ddmmyyyy(it.date);
-      if (!d) return acc;
-      if (sameMonth(d, m, y)) acc += Number(it.valor || 0);
-      return acc;
-    }, 0);
-  }
-
-  // FIXAS NÃO entram em cartões
-  function monthTotalForCard(card, m, y){
-    return data.transactions.reduce((acc, t) => {
-      if (t.cat === "Despesas Fixas") return acc;
-      if (t.card !== card) return acc;
-      const d = parse_ddmmyyyy(t.date);
-      if (!d) return acc;
-      if (sameMonth(d, m, y)) acc += Number(t.valor || 0);
-      return acc;
-    }, 0);
-  }
-
-  function monthTransactions(m, y){
-    const txs = data.transactions.filter(t => {
-      const d = parse_ddmmyyyy(t.date);
-      if (!d) return false;
-      return sameMonth(d, m, y);
-    });
-    txs.reverse();
-    return txs;
-  }
-  function monthTransactionsForCard(card, m, y){
-    const txs = data.transactions.filter(t => {
-      if (t.cat === "Despesas Fixas") return false;
-      if (t.card !== card) return false;
-      const d = parse_ddmmyyyy(t.date);
-      if (!d) return false;
-      return sameMonth(d, m, y);
-    });
-    txs.reverse();
-    return txs;
-  }
-
-  // ====== UI helpers ======
-  const view = document.getElementById("view");
-  const monthLabel = document.getElementById("monthLabel");
-  const modalOverlay = document.getElementById("modalOverlay");
-  const modalTitle = document.getElementById("modalTitle");
-  const modalBody = document.getElementById("modalBody");
-  const modalFooter = document.getElementById("modalFooter");
-  const modalClose = document.getElementById("modalClose");
-  const toastEl = document.getElementById("toast");
-
-  function toast(msg){
-    toastEl.textContent = msg;
-    toastEl.style.display = "block";
-    clearTimeout(toastEl._t);
-    toastEl._t = setTimeout(() => toastEl.style.display = "none", 2200);
-  }
-  function openModal(title, bodyNode, footerButtons){
-    modalTitle.textContent = title;
-    modalBody.innerHTML = "";
-    modalBody.appendChild(bodyNode);
-    modalFooter.innerHTML = "";
-    for (const btn of footerButtons) modalFooter.appendChild(btn);
-    modalOverlay.style.display = "flex";
-  }
-  function closeModal(){ modalOverlay.style.display = "none"; }
-
-  modalClose.addEventListener("click", closeModal);
-  modalOverlay.addEventListener("click", (e) => { if (e.target === modalOverlay) closeModal(); });
-  window.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
-
-  function el(tag, attrs={}, children=[]){
-    const n = document.createElement(tag);
-    for (const [k,v] of Object.entries(attrs)){
-      if (k === "class") n.className = v;
-      else if (k === "html") n.innerHTML = v;
-      else if (k.startsWith("on") && typeof v === "function") n.addEventListener(k.slice(2), v);
-      else if (v == null) {}
-      else n.setAttribute(k, v);
-    }
-    for (const c of children){
-      if (c == null) continue;
-      if (typeof c === "string") n.appendChild(document.createTextNode(c));
-      else n.appendChild(c);
-    }
-    return n;
-  }
-  function btnSmall(text, cls, onClick){ return el("button", { class: `btn btnSmall ${cls||""}`, onclick: onClick }, [text]); }
-  function select(options, value){
-    const s = el("select");
-    for (const opt of options) s.appendChild(el("option", { value: opt }, [opt]));
-    s.value = value;
-    return s;
-  }
-
-  // ====== App state ======
-  let data = load();
-  const now = today();
-  const state = { m: now.getMonth()+1, y: now.getFullYear(), route: "dashboard", cardDetail: null };
-
-  function setMonth(m, y){
-    state.m = m; state.y = y;
-    monthLabel.textContent = monthYearStr(state.m, state.y);
-    render();
-  }
-  function go(route, payload=null){
-    state.route = route;
-    state.cardDetail = payload;
-    render();
-  }
-
-  function exportJSON(){
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `metacartao_${monthYearStr(state.m, state.y).replace("/","-")}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-  function importJSONFile(file){
-    const reader = new FileReader();
-    reader.onload = () => {
-      try{
-        const obj = JSON.parse(String(reader.result || "{}"));
-        data = normalizeData(obj);
-        save();
-        toast("Importado com sucesso.");
-        render();
-      }catch{
-        toast("Arquivo inválido.");
-      }
-    };
-    reader.readAsText(file);
-  }
-
-  // ====== Header buttons ======
-  document.getElementById("btnPrev").addEventListener("click", () => {
-    const d = new Date(state.y, state.m-1, 1);
-    const nd = addMonths(d, -1);
-    setMonth(nd.getMonth()+1, nd.getFullYear());
-  });
-  document.getElementById("btnNext").addEventListener("click", () => {
-    const d = new Date(state.y, state.m-1, 1);
-    const nd = addMonths(d, +1);
-    setMonth(nd.getMonth()+1, nd.getFullYear());
-  });
-  document.getElementById("btnToday").addEventListener("click", () => {
-    const t = today();
-    setMonth(t.getMonth()+1, t.getFullYear());
-  });
-  document.getElementById("btnExport").addEventListener("click", exportJSON);
-  document.getElementById("btnReset").addEventListener("click", () => {
-    if (!confirm("Resetar todos os dados?")) return;
-    data = normalizeData(seed());
-    save();
-    toast("Dados resetados.");
-    render();
-  });
-  document.getElementById("fileImport").addEventListener("change", (e) => {
-    const file = e.target.files && e.target.files[0];
-    e.target.value = "";
-    if (file) importJSONFile(file);
-  });
-
-  // ====== Tabs ======
-  document.getElementById("tabDashboard").addEventListener("click", () => go("dashboard"));
-  document.getElementById("tabGastos").addEventListener("click", () => go("gastos"));
-  document.getElementById("tabFixas").addEventListener("click", () => go("fixas"));
-  document.getElementById("tabReceitas").addEventListener("click", () => go("receitas"));
-  document.getElementById("tabCartoes").addEventListener("click", () => go("cartoes"));
-
-  // ====== Modais ======
-  function popupAddTransaction(goBack="dashboard", prefillCard=null){
-    const wrap = el("div");
-    const form = el("div", { class:"form" });
-
-    const iDate = el("input", { value: fmt_ddmmyyyy(today()), placeholder:"dd/MM/aaaa" });
-    const iDesc = el("input", { placeholder:"Descrição" });
-    const iVal  = el("input", { placeholder:"Valor total (ex: 1000,00)" });
-    const iParc = el("input", { placeholder:"Parcelas opcional (ex: 1/10)" });
-
-    const cats = ["Outros","Alimentação","Despesas Fixas"];
-    const sCat = select(cats, cats[0]);
-
-    const cardNames = Object.keys(data.cards || {});
-    if (!cardNames.length){ data.cards = { "Mercado Pago": 0 }; cardNames.push("Mercado Pago"); }
-    const sCard = select(cardNames, prefillCard && cardNames.includes(prefillCard) ? prefillCard : cardNames[0]);
-
-    const cardHint = el("div", { class:"muted", style:"font-size:12px; font-weight:800; margin-top:6px; display:none;" }, [
-      "Em Despesas Fixas o cartão fica como: ", NO_CARD
-    ]);
-
-    function syncCat(){
-      if (sCat.value === "Despesas Fixas"){
-        sCard.style.display = "none";
-        cardHint.style.display = "block";
-      }else{
-        sCard.style.display = "";
-        cardHint.style.display = "none";
-      }
-    }
-    sCat.addEventListener("change", syncCat);
-
-    form.appendChild(el("label", {}, ["Data", iDate]));
-    form.appendChild(el("label", {}, ["Descrição", iDesc]));
-    form.appendChild(el("label", {}, ["Valor total", iVal]));
-    form.appendChild(el("label", {}, ["Parcelas (opcional)", iParc]));
-    form.appendChild(el("label", {}, ["Categoria", sCat]));
-    form.appendChild(el("label", {}, ["Cartão", sCard, cardHint]));
-    wrap.appendChild(form);
-    syncCat();
-
-    const bCancel = btnSmall("Cancelar", "btnGhost", () => closeModal());
-    const bSave = btnSmall("Salvar", "btnGreen", () => {
-      const d = parse_ddmmyyyy(iDate.value);
-      if (!d){ toast("Data inválida. Use dd/MM/aaaa."); return; }
-
-      const total = numOr(iVal.value, NaN);
-      const desc = normDesc(iDesc.value || "");
-      const cat = normCategory(sCat.value);
-      const card = (cat === "Despesas Fixas") ? NO_CARD : normDesc(sCard.value);
-
-      if (!Number.isFinite(total) || !desc){ toast("Preencha valor e descrição."); return; }
-
-      const [idx, tot] = parseInstallments(iParc.value);
-
-      if (tot == null){
-        data.transactions.push({ date: fmt_ddmmyyyy(d), valor: Number(total), cat, card, desc });
-      }else{
-        const vals = splitInstallmentValues(Number(total), tot);
-        const startIndex = idx;
-        const remaining = tot - startIndex + 1;
-
-        for (let i=0; i<remaining; i++){
-          const parcelaNum = startIndex + i;
-          const dd = addMonths(d, i);
-          data.transactions.push({
-            date: fmt_ddmmyyyy(dd),
-            valor: Number(vals[parcelaNum - 1]),
-            cat, card,
-            desc: `${desc} (${parcelaNum}/${tot})`
-          });
-        }
-      }
-
-      save();
-      closeModal();
-      if (goBack === "card_detail") go("card_detail", prefillCard);
-      else go(goBack);
-      toast("Gasto salvo.");
-    });
-
-    openModal("Novo gasto", wrap, [bCancel, bSave]);
-  }
-
-  function popupAddIncome(goBack="dashboard"){
-    const wrap = el("div");
-    const form = el("div", { class:"form" });
-
-    const iDate = el("input", { value: fmt_ddmmyyyy(today()), placeholder:"dd/MM/aaaa" });
-    const sources = Array.isArray(data.income_sources) && data.income_sources.length ? data.income_sources : ["Salário 1"];
-    const sSrc = select(sources, sources[0]);
-    const iVal = el("input", { placeholder:"Valor (ex: 2500,00)" });
-    const iDesc = el("input", { placeholder:"Observação (opcional)" });
-
-    form.appendChild(el("label", {}, ["Data", iDate]));
-    form.appendChild(el("label", {}, ["Fonte", sSrc]));
-    form.appendChild(el("label", {}, ["Valor", iVal]));
-    form.appendChild(el("label", {}, ["Obs (opcional)", iDesc]));
-    wrap.appendChild(form);
-
-    const bCancel = btnSmall("Cancelar", "btnGhost", () => closeModal());
-    const bSave = btnSmall("Salvar", "btnOrange", () => {
-      const d = parse_ddmmyyyy(iDate.value);
-      if (!d){ toast("Data inválida. Use dd/MM/aaaa."); return; }
-      const v = numOr(iVal.value, NaN);
-      if (!Number.isFinite(v)){ toast("Preencha o valor."); return; }
-
-      data.incomes.push({ date: fmt_ddmmyyyy(d), valor: Number(v), source: normDesc(sSrc.value), desc: normDesc(iDesc.value || "") });
-      save();
-      closeModal();
-      go(goBack);
-      toast("Receita salva.");
-    });
-
-    openModal("Nova receita", wrap, [bCancel, bSave]);
-  }
-
-  // FIXAS: adicionar/editar com valor (sem pré-fixadas)
-  function popupAddFixed(){
-    const wrap = el("div");
-    const form = el("div", { class:"form" });
-
-    const iDate = el("input", { value: `01/${pad2(state.m)}/${state.y}`, placeholder:"dd/MM/aaaa" });
-    const iDesc = el("input", { placeholder:"Descrição (ex: Luz)" });
-    const iVal  = el("input", { placeholder:"Valor (ex: 450,00)" });
-
-    form.appendChild(el("label", {}, ["Data", iDate]));
-    form.appendChild(el("label", {}, ["Descrição", iDesc]));
-    form.appendChild(el("label", {}, ["Valor", iVal]));
-    wrap.appendChild(form);
-
-    const bCancel = btnSmall("Cancelar", "btnGhost", () => closeModal());
-    const bSave = btnSmall("Salvar", "btnGreen", () => {
-      const d = parse_ddmmyyyy(iDate.value);
-      if (!d){ toast("Data inválida."); return; }
-      if (!sameMonth(d, state.m, state.y)){ toast("Use uma data dentro do mês selecionado."); return; }
-
-      const desc = normDesc(iDesc.value || "");
-      const v = numOr(iVal.value, NaN);
-      if (!desc || !Number.isFinite(v)){ toast("Preencha descrição e valor."); return; }
-
-      data.transactions.push({ date: fmt_ddmmyyyy(d), valor: Number(v), cat: "Despesas Fixas", card: NO_CARD, desc });
-      save();
-      closeModal();
-      toast("Fixa adicionada.");
-      render();
-    });
-
-    openModal("Adicionar despesa fixa", wrap, [bCancel, bSave]);
-  }
-
-  function popupEditFixed(tx){
-    const wrap = el("div");
-    const form = el("div", { class:"form" });
-
-    const iDate = el("input", { value: safeText(tx.date), placeholder:"dd/MM/aaaa" });
-    const iDesc = el("input", { value: safeText(tx.desc), placeholder:"Descrição" });
-    const iVal  = el("input", { value: String(numOr(tx.valor,0)).replace(".", ","), placeholder:"Valor" });
-
-    form.appendChild(el("label", {}, ["Data", iDate]));
-    form.appendChild(el("label", {}, ["Descrição", iDesc]));
-    form.appendChild(el("label", {}, ["Valor", iVal]));
-    wrap.appendChild(form);
-
-    const bCancel = btnSmall("Cancelar", "btnGhost", () => closeModal());
-    const bDelete = btnSmall("Excluir", "btnRed", () => {
-      if (!confirm("Excluir esta despesa fixa?")) return;
-      const idx = data.transactions.indexOf(tx);
-      if (idx >= 0) data.transactions.splice(idx, 1);
-      save();
-      closeModal();
-      toast("Excluída.");
-      render();
-    });
-    const bSave = btnSmall("Salvar", "btnGreen", () => {
-      const d = parse_ddmmyyyy(iDate.value);
-      if (!d){ toast("Data inválida."); return; }
-      if (!sameMonth(d, state.m, state.y)){ toast("Use uma data dentro do mês selecionado."); return; }
-
-      const desc = normDesc(iDesc.value || "");
-      const v = numOr(iVal.value, NaN);
-      if (!desc || !Number.isFinite(v)){ toast("Preencha descrição e valor."); return; }
-
-      tx.date = fmt_ddmmyyyy(d);
-      tx.desc = desc;
-      tx.valor = Number(v);
-      tx.cat = "Despesas Fixas";
-      tx.card = NO_CARD;
-
-      save();
-      closeModal();
-      toast("Atualizada.");
-      render();
-    });
-
-    openModal("Editar despesa fixa", wrap, [bCancel, bDelete, bSave]);
-  }
-
-  function popupEditCard(cardName){
-    const wrap = el("div");
-    const form = el("div", { class:"form" });
-
-    const iName = el("input", { value: cardName, placeholder:"Nome do cartão" });
-    const iLimit = el("input", { value: String(numOr((data.cards||{})[cardName], 0)), placeholder:"Limite/meta do mês (ex: 400,00)" });
-
-    form.appendChild(el("label", {}, ["Nome", iName]));
-    form.appendChild(el("label", {}, ["Limite/meta do mês", iLimit]));
-    wrap.appendChild(form);
-
-    const bCancel = btnSmall("Cancelar", "btnGhost", () => closeModal());
-
-    const bDelete = btnSmall("Excluir", "btnRed", () => {
-      if (!confirm("Excluir este cartão?")) return;
-      delete data.cards[cardName];
-      data.transactions = (data.transactions || []).map(t => (t.card === cardName ? { ...t, card: "" } : t));
-      save();
-      closeModal();
-      toast("Cartão excluído.");
-      if (state.route === "card_detail") go("cartoes"); else render();
-    });
-
-    const bSave = btnSmall("Salvar", "btnGreen", () => {
-      const newName = normDesc(iName.value);
-      const newLimit = numOr(iLimit.value, NaN);
-      if (!newName || !Number.isFinite(newLimit)){ toast("Preencha nome e limite."); return; }
-
-      if (newName !== cardName){
-        if (data.cards[newName] != null){ toast("Já existe um cartão com esse nome."); return; }
-        delete data.cards[cardName];
-        data.cards[newName] = Number(newLimit);
-        data.transactions = (data.transactions || []).map(t => (t.card === cardName ? { ...t, card: newName } : t));
-        save();
-        closeModal();
-        toast("Cartão atualizado.");
-        if (state.route === "card_detail") go("card_detail", newName); else render();
-      }else{
-        data.cards[cardName] = Number(newLimit);
-        save();
-        closeModal();
-        toast("Cartão atualizado.");
-        render();
-      }
-    });
-
-    openModal("Editar cartão", wrap, [bCancel, bDelete, bSave]);
-  }
-
-  function popupAddCard(){
-    const wrap = el("div");
-    const form = el("div", { class:"form" });
-
-    const iName = el("input", { placeholder:"Nome do cartão (ex: Itaú)" });
-    const iLimit = el("input", { placeholder:"Limite/meta do mês (ex: 500,00)" });
-
-    form.appendChild(el("label", {}, ["Nome", iName]));
-    form.appendChild(el("label", {}, ["Limite/meta do mês", iLimit]));
-    wrap.appendChild(form);
-
-    const bCancel = btnSmall("Cancelar", "btnGhost", () => closeModal());
-    const bSave = btnSmall("Adicionar", "btnGreen", () => {
-      const nm = normDesc(iName.value);
-      const v = numOr(iLimit.value, NaN);
-      if (!nm || !Number.isFinite(v)){ toast("Preencha nome e limite."); return; }
-      if (data.cards[nm] != null){ toast("Esse cartão já existe."); return; }
-
-      data.cards[nm] = Number(v);
-      save();
-      closeModal();
-      toast("Cartão adicionado.");
-      render();
-    });
-
-    openModal("Novo cartão", wrap, [bCancel, bSave]);
-  }
-
-  // ====== Views ======
-  function render(){
-    save();
-    monthLabel.textContent = monthYearStr(state.m, state.y);
-    view.innerHTML = "";
-
-    if (state.route === "dashboard") view.appendChild(renderDashboard());
-    else if (state.route === "gastos") view.appendChild(renderGastos());
-    else if (state.route === "fixas") view.appendChild(renderFixas());
-    else if (state.route === "receitas") view.appendChild(renderReceitas());
-    else if (state.route === "cartoes") view.appendChild(renderCartoes());
-    else if (state.route === "card_detail") view.appendChild(renderCardDetail(state.cardDetail));
-    else view.appendChild(renderDashboard());
-  }
-
-  // DASHBOARD: só cartões + despesas x receitas (mês)
-  function renderDashboard(){
-    const p = el("div", { class:"panel" });
-
-    const inc = monthTotalIncomes(state.m, state.y);
-    const exp = monthTotalExpenses(state.m, state.y);
-    const saldo = inc - exp;
-
-    p.appendChild(
-      el("div", { class:"panelHeader" }, [
-        el("div", {}, [
-          el("div", { class:"panelTitle" }, ["📊 Dashboard • ", monthYearStr(state.m, state.y)]),
-          el("div", { class:"panelSub" }, ["Somente mês selecionado • quanto entrou, quanto saiu e quanto resta"])
-        ]),
-        el("div", { class:"row" }, [
-          btnSmall("+ Gasto", "btnGreen", () => popupAddTransaction("dashboard")),
-          btnSmall("+ Receita", "btnOrange", () => popupAddIncome("dashboard"))
-        ])
-      ])
-    );
-
-    const body = el("div", { class:"panelBody" });
-
-    body.appendChild(el("div", { class:"kpi" }, [
-      el("div", { class:"kpiCard" }, [
-        el("div", { class:"label" }, ["Receitas (mês)"]),
-        el("div", { class:"value mono" }, [brl(inc)])
-      ]),
-      el("div", { class:"kpiCard" }, [
-        el("div", { class:"label" }, ["Despesas (mês)"]),
-        el("div", { class:"value mono" }, [brl(exp)])
-      ]),
-      el("div", { class:"kpiCard" }, [
-        el("div", { class:"label" }, ["Resta (saldo do mês)"]),
-        el("div", { class:"value mono" }, [brl(saldo)])
-      ]),
-    ]));
-
-    body.appendChild(el("div", { class:"divider" }));
-
-    body.appendChild(el("div", { class:"itemTitle" }, ["Cartões (mês selecionado)"]));
-    body.appendChild(el("div", { class:"itemMeta" }, ["Fixas não entram nos cartões."]));
-
-    const cards = data.cards || {};
-    const entries = Object.entries(cards);
-    const list = el("div", { class:"list", style:"margin-top:10px;" });
-
-    if (!entries.length){
-      list.appendChild(el("div", { class:"item" }, [el("div", { class:"muted" }, ["Sem cartões cadastrados."])]));
-    }else{
-      entries.forEach(([cardName, limitRaw]) => {
-        const limit = numOr(limitRaw, 0);
-        const spent = monthTotalForCard(cardName, state.m, state.y);
-        const rest = limit - spent;
-        const pct = limit > 0 ? Math.max(0, Math.min(100, (spent / limit) * 100)) : 0;
-
-        const item = el("div", { class:"item" });
-        item.appendChild(el("div", { class:"itemTop" }, [
-          el("div", {}, [
-            el("p", { class:"itemTitle" }, [cardName]),
-            el("div", { class:"itemMeta mono" }, [`Limite: ${brl(limit)} • Gasto: ${brl(spent)} • Resta: ${brl(rest)}`])
-          ]),
-          el("div", { class:"row" }, [
-            btnSmall("Ver", "btnDark", () => go("card_detail", cardName)),
-            btnSmall("+ Gasto", "btnGreen", () => popupAddTransaction("card_detail", cardName))
-          ])
-        ]));
-        item.appendChild(el("div", { class:"itemMeta" }, [
-          el("div", { style:"margin-top:10px; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); border-radius:999px; overflow:hidden; height:12px;" }, [
-            el("div", { style:`height:100%; width:${pct}%; background: linear-gradient(90deg, rgba(91,192,255,1), rgba(53,208,127,1));` })
-          ])
-        ]));
-        list.appendChild(item);
-      });
-    }
-
-    body.appendChild(list);
-    p.appendChild(body);
-    return p;
-  }
-
-  function renderGastos(){
-    const p = el("div", { class:"panel" });
-
-    p.appendChild(
-      el("div", { class:"panelHeader" }, [
-        el("div", {}, [
-          el("div", { class:"panelTitle" }, ["🧾 Gastos • ", monthYearStr(state.m, state.y)]),
-          el("div", { class:"panelSub" }, ["Somente mês selecionado"])
-        ]),
-        btnSmall("+ Novo", "btnGreen", () => popupAddTransaction("gastos"))
-      ])
-    );
-
-    const body = el("div", { class:"panelBody" });
-    const txs = monthTransactions(state.m, state.y);
-
-    if (!txs.length){
-      body.appendChild(el("div", { class:"item" }, [el("div", { class:"muted" }, ["Sem gastos neste mês."])]));
-      p.appendChild(body);
-      return p;
-    }
-
-    const list = el("div", { class:"list" });
-
-    txs.forEach((t) => {
-      const cardShow = (t.cat === "Despesas Fixas" || t.card === NO_CARD || !t.card) ? "—" : t.card;
-
-      const item = el("div", { class:"item" });
-      item.appendChild(el("div", { class:"itemTop" }, [
-        el("div", {}, [
-          el("p", { class:"itemTitle mono" }, [`${t.date} • ${t.cat} • ${cardShow} • ${brl(t.valor)}`]),
-          el("div", { class:"itemMeta" }, [safeText(t.desc || "")])
-        ]),
-        el("div", { class:"row" }, [
-          btnSmall("Excluir", "btnRed", () => {
-            if (!confirm("Excluir este gasto?")) return;
-            const idx = data.transactions.indexOf(t);
-            if (idx >= 0) data.transactions.splice(idx, 1);
-            save();
-            toast("Gasto excluído.");
-            render();
-          })
-        ])
-      ]));
-      list.appendChild(item);
-    });
-
-    body.appendChild(list);
-    p.appendChild(body);
-    return p;
-  }
-
-  // FIXAS: só adicionar/editar valor (sem pré-fixadas)
-  function renderFixas(){
-    const p = el("div", { class:"panel" });
-
-    p.appendChild(
-      el("div", { class:"panelHeader" }, [
-        el("div", {}, [
-          el("div", { class:"panelTitle" }, ["🧩 Fixas • ", monthYearStr(state.m, state.y)]),
-          el("div", { class:"panelSub" }, ["Adicione e edite as despesas fixas do mês"])
-        ]),
-        el("div", { class:"row" }, [
-          btnSmall("+ Fixa", "btnGreen", () => popupAddFixed()),
-          btnSmall("+ Gasto", "btnGhost", () => popupAddTransaction("fixas"))
-        ])
-      ])
-    );
-
-    const body = el("div", { class:"panelBody" });
-
-    const fixedTxs = monthTransactions(state.m, state.y).filter(t => t.cat === "Despesas Fixas");
-    const list = el("div", { class:"list" });
-
-    if (!fixedTxs.length){
-      list.appendChild(el("div", { class:"item" }, [
-        el("div", { class:"itemTitle" }, ["Nenhuma despesa fixa neste mês."]),
-        el("div", { class:"itemMeta" }, ["Toque em “+ Fixa” para adicionar."])
-      ]));
-    }else{
-      fixedTxs.forEach((t) => {
-        const item = el("div", { class:"item" });
-        item.appendChild(el("div", { class:"itemTop" }, [
-          el("div", {}, [
-            el("p", { class:"itemTitle" }, [safeText(t.desc || "Fixa")]),
-            el("div", { class:"itemMeta mono" }, [`${t.date} • ${brl(numOr(t.valor,0))}`])
-          ]),
-          el("div", { class:"row" }, [
-            btnSmall("Editar", "btnGhost", () => popupEditFixed(t)),
-            btnSmall("Excluir", "btnRed", () => {
-              if (!confirm("Excluir esta despesa fixa?")) return;
-              const idx = data.transactions.indexOf(t);
-              if (idx >= 0) data.transactions.splice(idx, 1);
-              save();
-              toast("Excluída.");
-              render();
-            })
-          ])
-        ]));
-        list.appendChild(item);
-      });
-    }
-
-    body.appendChild(list);
-    p.appendChild(body);
-    return p;
-  }
-
-  function renderReceitas(){
-    const p = el("div", { class:"panel" });
-
-    p.appendChild(
-      el("div", { class:"panelHeader" }, [
-        el("div", {}, [
-          el("div", { class:"panelTitle" }, ["💰 Receitas • ", monthYearStr(state.m, state.y)]),
-          el("div", { class:"panelSub" }, ["Somente mês selecionado"])
-        ]),
-        btnSmall("+ Nova", "btnOrange", () => popupAddIncome("receitas"))
-      ])
-    );
-
-    const body = el("div", { class:"panelBody" });
-
-    const incs = (data.incomes || []).filter(it => {
-      const d = parse_ddmmyyyy(it.date);
-      if (!d) return false;
-      return sameMonth(d, state.m, state.y);
-    }).slice().reverse();
-
-    const list = el("div", { class:"list" });
-
-    if (!incs.length){
-      list.appendChild(el("div", { class:"item" }, [el("div", { class:"muted" }, ["Sem receitas neste mês."])]));
-    }else{
-      incs.forEach((it) => {
-        const item = el("div", { class:"item" });
-        item.appendChild(el("div", { class:"itemTop" }, [
-          el("div", {}, [
-            el("p", { class:"itemTitle mono" }, [`${it.date} • ${safeText(it.source)} • ${brl(it.valor)}`]),
-            el("div", { class:"itemMeta" }, [safeText(it.desc || "")])
-          ]),
-          el("div", { class:"row" }, [
-            btnSmall("Excluir", "btnRed", () => {
-              if (!confirm("Excluir esta receita?")) return;
-              const idx = data.incomes.indexOf(it);
-              if (idx >= 0) data.incomes.splice(idx, 1);
-              save();
-              toast("Receita excluída.");
-              render();
-            })
-          ])
-        ]));
-        list.appendChild(item);
-      });
-    }
-
-    body.appendChild(list);
-    p.appendChild(body);
-    return p;
-  }
-
-  function renderCartoes(){
-    const p = el("div", { class:"panel" });
-
-    p.appendChild(
-      el("div", { class:"panelHeader" }, [
-        el("div", {}, [
-          el("div", { class:"panelTitle" }, ["💳 Cartões • ", monthYearStr(state.m, state.y)]),
-          el("div", { class:"panelSub" }, ["Editar limites do mês • Fixas não entram em cartões"])
-        ]),
-        el("div", { class:"row" }, [
-          btnSmall("+ Cartão", "btnGreen", () => popupAddCard()),
-          btnSmall("+ Gasto", "btnGhost", () => popupAddTransaction("cartoes"))
-        ])
-      ])
-    );
-
-    const body = el("div", { class:"panelBody" });
-    const list = el("div", { class:"list" });
-
-    const cards = data.cards || {};
-    const entries = Object.entries(cards);
-
-    if (!entries.length){
-      list.appendChild(el("div", { class:"item" }, [el("div", { class:"muted" }, ["Sem cartões cadastrados."])]));
-    }else{
-      entries.forEach(([cardName, limitRaw]) => {
-        const limit = numOr(limitRaw, 0);
-        const spent = monthTotalForCard(cardName, state.m, state.y);
-        const rest = limit - spent;
-        const pct = limit > 0 ? Math.max(0, Math.min(100, (spent / limit) * 100)) : 0;
-
-        const item = el("div", { class:"item" });
-        item.appendChild(el("div", { class:"itemTop" }, [
-          el("div", {}, [
-            el("p", { class:"itemTitle" }, [cardName]),
-            el("div", { class:"itemMeta mono" }, [`Limite: ${brl(limit)} • Gasto: ${brl(spent)} • Resta: ${brl(rest)}`])
-          ]),
-          el("div", { class:"row" }, [
-            btnSmall("Ver", "btnDark", () => go("card_detail", cardName)),
-            btnSmall("Editar", "btnGhost", () => popupEditCard(cardName)),
-            btnSmall("+ Gasto", "btnGreen", () => popupAddTransaction("card_detail", cardName))
-          ])
-        ]));
-        item.appendChild(el("div", { class:"itemMeta" }, [
-          el("div", { style:"margin-top:10px; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); border-radius:999px; overflow:hidden; height:12px;" }, [
-            el("div", { style:`height:100%; width:${pct}%; background: linear-gradient(90deg, rgba(91,192,255,1), rgba(53,208,127,1));` })
-          ])
-        ]));
-        list.appendChild(item);
-      });
-    }
-
-    body.appendChild(list);
-    p.appendChild(body);
-    return p;
-  }
-
-  function renderCardDetail(cardName){
-    const p = el("div", { class:"panel" });
-
-    const limit = numOr((data.cards||{})[cardName], 0);
-    const spent = monthTotalForCard(cardName, state.m, state.y);
-    const rest = limit - spent;
-    const pct = limit > 0 ? Math.max(0, Math.min(100, (spent / limit) * 100)) : 0;
-
-    p.appendChild(
-      el("div", { class:"panelHeader" }, [
-        el("div", {}, [
-          el("div", { class:"panelTitle" }, [`💳 ${cardName} • `, monthYearStr(state.m, state.y)]),
-          el("div", { class:"panelSub mono" }, [`Limite: ${brl(limit)} • Gasto: ${brl(spent)} • Resta: ${brl(rest)}`])
-        ]),
-        el("div", { class:"row" }, [
-          btnSmall("◀ Voltar", "btnGhost", () => go("cartoes")),
-          btnSmall("Editar limite", "btnGhost", () => popupEditCard(cardName)),
-          btnSmall("+ Gasto", "btnGreen", () => popupAddTransaction("card_detail", cardName))
-        ])
-      ])
-    );
-
-    const body = el("div", { class:"panelBody" });
-
-    body.appendChild(el("div", { class:"item" }, [
-      el("div", { class:"itemTitle" }, ["Progresso do mês"]),
-      el("div", { class:"itemMeta mono" }, [`${brl(spent)} / ${brl(limit)} (${pct.toFixed(0)}%)`]),
-      el("div", { style:"margin-top:10px; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); border-radius:999px; overflow:hidden; height:12px;" }, [
-        el("div", { style:`height:100%; width:${pct}%; background: linear-gradient(90deg, rgba(91,192,255,1), rgba(53,208,127,1));` })
-      ])
-    ]));
-
-    body.appendChild(el("div", { class:"divider" }));
-
-    const txs = monthTransactionsForCard(cardName, state.m, state.y);
-
-    if (!txs.length){
-      body.appendChild(el("div", { class:"item" }, [el("div", { class:"muted" }, ["Sem compras nesse cartão no mês."])]));
-      p.appendChild(body);
-      return p;
-    }
-
-    const list = el("div", { class:"list" });
-
-    txs.forEach((t) => {
-      const item = el("div", { class:"item" });
-      item.appendChild(el("div", { class:"itemTop" }, [
-        el("div", {}, [
-          el("p", { class:"itemTitle mono" }, [`${t.date} • ${t.cat} • ${brl(t.valor)}`]),
-          el("div", { class:"itemMeta" }, [safeText(t.desc || "")])
-        ]),
-        el("div", { class:"row" }, [
-          btnSmall("Excluir", "btnRed", () => {
-            if (!confirm("Excluir este gasto?")) return;
-            const idx = data.transactions.indexOf(t);
-            if (idx >= 0) data.transactions.splice(idx, 1);
-            save();
-            toast("Gasto excluído.");
-            render();
-          })
-        ])
-      ]));
-      list.appendChild(item);
-    });
-
-    body.appendChild(list);
-    p.appendChild(body);
-    return p;
-  }
-
-  // Initial
-  setMonth(state.m, state.y);
-  go("dashboard");
-})();
+const STORAGE="metacartao_final_v1";
+let data=JSON.parse(localStorage.getItem(STORAGE)||"{}");
+if(!data.cards)data.cards={"Nubank":400,"Inter":400};
+if(!data.transactions)data.transactions=[];
+if(!data.incomes)data.incomes=[];
+
+function save(){localStorage.setItem(STORAGE,JSON.stringify(data));}
+
+function parseBR(v){return Number(String(v).replace(/\./g,"").replace(",","."));}
+function fmt(d){return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`}
+function parseDate(s){const[d,m,y]=s.split("/").map(Number);return new Date(y,m-1,d)}
+
+function detectParcel(t){
+if(!t)return null;
+const m=t.match(/(\d+)\s*(?:\/|de)\s*(\d+)/i);
+return m?{cur:+m[1],tot:+m[2]}:null;
+}
+
+/* ===== IMPORT ===== */
+let csvText=null;
+
+fileInput.onchange=e=>{
+const f=e.target.files[0];if(!f)return;
+const r=new FileReader();
+r.onload=()=>{
+if(f.name.endsWith(".json")){
+data=JSON.parse(r.result);save();render();
+}else{
+csvText=r.result;openCSV();
+}};
+r.readAsText(f);
+};
+
+function openCSV(){
+const s=document.getElementById("csvCard");
+s.innerHTML="";
+Object.keys(data.cards).forEach(c=>{
+const o=document.createElement("option");
+o.value=c;o.textContent=c;s.appendChild(o);
+});
+csvModal.style.display="flex";
+}
+function closeCSV(){csvModal.style.display="none"}
+
+function confirmCSV(){
+const card=csvCard.value;
+importCSV(csvText,card);
+closeCSV();
+}
+
+function importCSV(text,card){
+const lines=text.split(/\r?\n/).filter(l=>l.trim());
+const header=lines.shift().toLowerCase().split(",");
+for(const ln of lines){
+const cols=ln.split(",");
+const row={};
+header.forEach((h,i)=>row[h.trim()]=cols[i]?.trim());
+const d=parseDate(row.data);
+const val=parseBR(row.valor);
+const desc=row.descricao||"Compra";
+const parc=detectParcel(row.parcelas||desc);
+
+if(!parc){
+data.transactions.push({date:fmt(d),valor:val,cat:"Outros",card,desc});
+}else{
+const pval=+(val/parc.tot).toFixed(2);
+for(let i=parc.cur;i<=parc.tot;i++){
+const nd=new Date(d);nd.setMonth(nd.getMonth()+i-parc.cur);
+data.transactions.push({
+date:fmt(nd),valor:pval,cat:"Outros",card,
+desc:`${desc} (${i}/${parc.tot})`
+});
+}
+}
+}
+save();render();
+}
+
+/* ===== VIEWS ===== */
+let view="dashboard";
+function setView(v){view=v;render()}
+
+function render(){
+const v=document.getElementById("view");
+v.innerHTML="";
+if(view==="dashboard")renderDashboard(v);
+if(view==="cartoes")renderCartoes(v);
+if(view==="fixas")renderFixas(v);
+if(view==="gastos")renderGastos(v);
+if(view==="receitas")renderReceitas(v);
+}
+
+function renderDashboard(v){
+const inc=data.incomes.reduce((a,b)=>a+b.valor,0);
+const exp=data.transactions.reduce((a,b)=>a+b.valor,0);
+v.innerHTML=`
+<div class="panel">
+<h3>Dashboard</h3>
+<div class="item">Receitas: R$ ${inc.toFixed(2)}</div>
+<div class="item">Despesas: R$ ${exp.toFixed(2)}</div>
+<div class="item">Saldo: R$ ${(inc-exp).toFixed(2)}</div>
+</div>`;
+}
+
+function renderCartoes(v){
+const p=document.createElement("div");p.className="panel";
+p.innerHTML="<h3>Cartões</h3>";
+const l=document.createElement("div");l.className="list";
+Object.entries(data.cards).forEach(([c,lim])=>{
+const spent=data.transactions.filter(t=>t.card===c).reduce((a,b)=>a+b.valor,0);
+l.innerHTML+=`<div class="item"><b>${c}</b><br>Limite: ${lim} | Gasto: ${spent}</div>`;
+});
+p.appendChild(l);v.appendChild(p);
+}
+
+function renderFixas(v){
+const p=document.createElement("div");p.className="panel";
+p.innerHTML="<h3>Fixas (adicionar manualmente como gasto)</h3>";
+v.appendChild(p);
+}
+
+function renderGastos(v){
+const p=document.createElement("div");p.className="panel";
+p.innerHTML="<h3>Gastos</h3>";
+const l=document.createElement("div");l.className="list";
+data.transactions.slice().reverse().forEach(t=>{
+l.innerHTML+=`<div class="item">${t.date} • ${t.card} • ${t.valor}<div class="muted">${t.desc}</div></div>`;
+});
+p.appendChild(l);v.appendChild(p);
+}
+
+function renderReceitas(v){
+const p=document.createElement("div");p.className="panel";
+p.innerHTML="<h3>Receitas</h3>";
+v.appendChild(p);
+}
+
+render();
 </script>
 </body>
 </html>
